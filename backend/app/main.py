@@ -4,9 +4,6 @@ import time
 from collections import defaultdict, deque
 from typing import Annotated
 
-from contextlib import asynccontextmanager
-from collections.abc import AsyncIterator
-
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image, UnidentifiedImageError
@@ -15,24 +12,19 @@ from .ai_client import diagnose_with_ai
 from .models import DiagnosticRequest, DiagnosticResponse, OperatingSystem
 from .settings import Settings, get_settings
 
-@asynccontextmanager
-async def lifespan(application: FastAPI) -> AsyncIterator[None]:
-    settings = get_settings()
-    application.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.origins,
-        allow_credentials=False,
-        allow_methods=["GET", "POST", "OPTIONS"],
-        allow_headers=["*"],
-    )
-    yield
-
 
 app = FastAPI(
     title="Atlas Smart Diagnostics API",
     version="0.1.0",
     description="AI-assisted self-service computer diagnostic triage for Atlas PC Support.",
-    lifespan=lifespan,
+)
+settings = get_settings()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
 )
 
 _request_times: dict[str, deque[float]] = defaultdict(deque)
