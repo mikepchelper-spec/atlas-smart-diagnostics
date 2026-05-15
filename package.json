@@ -1,0 +1,14 @@
+{
+  "name": "atlas-smart-diagnostics",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "install:all": "npm --prefix frontend install",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:frontend": "npm --prefix frontend run build",
+    "lint:frontend": "npm --prefix frontend run lint",
+    "test:backend": "python -m pytest backend/tests",
+    "lint:backend": "python -m ruff check backend/app backend/tests",
+    "format:backend": "python -m ruff format backend/app backend/tests"
+  }
+}
