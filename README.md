@@ -33,6 +33,10 @@ This is not a “magic repair bot”. It is a lead-converting triage assistant:
 - API keys stay server-side; WordPress/browser never receives them.
 - Basic per-IP rate limiting.
 - WordPress-friendly frontend build.
+- Server-generated `ATLAS-CASE-XXXXXX` IDs and structured WhatsApp handoff.
+- Anonymous in-memory usage metrics for diagnoses, OS mix, categories, difficulties, locales, and WhatsApp clicks.
+- ES/EN UI toggle that sends the selected locale to the backend.
+- Atlas runbook hints for Printer Doctor, GPU triage, AI Readiness, RustDesk remote support, and backup-first cases.
 
 ## Architecture
 
@@ -92,6 +96,7 @@ Backend:
 | `ATLAS_WHATSAPP_NUMBER` | placeholder | International format without `+`. |
 | `MAX_UPLOAD_MB` | `8` | Server-side screenshot upload limit. |
 | `RATE_LIMIT_PER_MINUTE` | `12` | Basic per-IP abuse protection. |
+| `METRICS_ADMIN_KEY` | empty | Optional key for `GET /api/metrics` via `X-Atlas-Metrics-Key`. Keep empty to disable public metrics access. |
 
 Frontend:
 
@@ -120,6 +125,54 @@ Deploy the frontend to a subdomain such as `https://diagnostico.atlaspcsupport.c
 Build the frontend and upload `frontend/dist/` to a static path served by NPM or WordPress uploads. Use an iframe pointing to that path.
 
 Avoid placing API keys or provider credentials in WordPress.
+
+## Case IDs and WhatsApp handoff
+
+Every successful diagnosis receives a short support reference such as `ATLAS-CASE-A1B2C3`. The WhatsApp CTA sends:
+
+- case ID,
+- selected OS,
+- difficulty,
+- self-service probability,
+- top likely cause,
+- first safe steps,
+- shortened problem text.
+
+This gives Atlas context before the customer starts a support conversation.
+
+## Anonymous metrics
+
+The backend records aggregate counts only. It does not store IPs, full issue text, uploaded images, names, phone numbers, or emails.
+
+Tracked counters:
+
+- total diagnoses,
+- WhatsApp CTA clicks,
+- operating systems,
+- diagnosis categories,
+- difficulties,
+- locales.
+
+To inspect metrics, set `METRICS_ADMIN_KEY` and call:
+
+```bash
+curl -H "X-Atlas-Metrics-Key: $METRICS_ADMIN_KEY" \
+  https://diagnostico-api.atlaspcsupport.com/api/metrics
+```
+
+The default store is in memory, so counters reset when the API process restarts. Use this first for MVP validation before adding a database.
+
+## Atlas knowledge base
+
+The first RAG-style layer is a local runbook matcher. It adds safe Atlas-specific hints to real AI prompts and returns matched runbook titles in the response:
+
+- Atlas Printer Doctor,
+- Atlas GPU Slowness Triage,
+- Atlas AI Readiness Assessment,
+- Atlas RustDesk Remote Support,
+- Atlas Backup First.
+
+This keeps the MVP dependency-free while making future vector search or CMS-backed knowledge easy to add.
 
 ## Safety policy
 

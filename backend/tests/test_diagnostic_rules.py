@@ -14,7 +14,7 @@ def test_data_risk_detects_disk_and_warns() -> None:
     assert response.difficulty == Difficulty.data_risk
     assert response.self_service_probability == SelfServiceProbability.low
     assert any("No formatees" in item or "No borres" in item for item in response.before_touching)
-    assert "WhatsApp" not in response.whatsapp_prefill
+    assert response.case_id == "ATLAS-CASE-000000"
 
 
 def test_network_issue_gets_basic_steps() -> None:

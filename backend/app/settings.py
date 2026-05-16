@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     atlas_whatsapp_number: str = Field(default="51999999999", alias="ATLAS_WHATSAPP_NUMBER")
     max_upload_mb: int = Field(default=8, ge=1, le=20, alias="MAX_UPLOAD_MB")
     rate_limit_per_minute: int = Field(default=12, ge=1, le=120, alias="RATE_LIMIT_PER_MINUTE")
+    metrics_admin_key: str | None = Field(default=None, alias="METRICS_ADMIN_KEY")
 
     @property
     def origins(self) -> list[str]:

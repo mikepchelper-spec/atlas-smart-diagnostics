@@ -149,9 +149,8 @@ def build_rule_based_diagnostic(request: DiagnosticRequest, provider: str = "moc
     ]
 
     summary = labels["summary"].format(os=os_label)
-    whatsapp = labels["whatsapp"].format(os=os_label, difficulty=labels[difficulty.value], issue=_shorten(text, 260))
-
     return DiagnosticResponse(
+        case_id="ATLAS-CASE-000000",
         summary=summary,
         likely_causes=causes[:5],
         difficulty=difficulty,
@@ -161,7 +160,7 @@ def build_rule_based_diagnostic(request: DiagnosticRequest, provider: str = "moc
         safe_steps=steps[:8],
         stop_and_contact=stop[:6],
         customer_message=labels["customer_message"],
-        whatsapp_prefill=whatsapp,
+        whatsapp_prefill=labels["whatsapp"].format(os=os_label, difficulty=labels[difficulty.value], issue=_shorten(text, 260)),
         disclaimer=labels["disclaimer"],
         model_provider=provider,
     )

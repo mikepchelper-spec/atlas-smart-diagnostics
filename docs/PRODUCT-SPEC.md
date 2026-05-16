@@ -19,6 +19,7 @@
 5. Accepts safety disclaimer.
 6. Receives structured triage.
 7. If risk is medium/high, clicks WhatsApp with a prefilled summary.
+8. Atlas receives a case ID and structured handoff instead of an unstructured “my PC fails” message.
 
 ## Diagnosis structure
 
@@ -32,6 +33,7 @@
 8. Stop-and-contact triggers.
 9. WhatsApp handoff.
 10. Disclaimer.
+11. Related Atlas runbook hints, when matched.
 
 ## Conversion strategy
 
@@ -44,11 +46,18 @@ The tool should give real value without replacing paid support. It should solve 
 
 ## Future-proofing backlog
 
-- Bilingual ES/EN toggle in UI.
-- Optional case ID and server-side anonymized diagnostic log.
+- Persistent metrics storage or dashboard if public traffic validates the funnel.
 - Admin dashboard with top issue categories.
 - Google Business Profile review prompt after successful self-service.
 - CAPTCHA/Turnstile if abuse starts.
 - PDF export of diagnostic result.
 - Integration with Atlas PC Support panel reports.
-- Knowledge base article linking by diagnosis category.
+- Vector/CMS-backed knowledge retrieval for larger Atlas runbooks.
+
+## Upscale features included in MVP PR
+
+- ES/EN toggle in the frontend.
+- Server-side case IDs in `ATLAS-CASE-XXXXXX` format.
+- Structured WhatsApp prefill with case context.
+- Anonymous aggregate metrics.
+- Local Atlas knowledge matcher for Printer Doctor, GPU triage, AI Readiness, RustDesk, and backup-first cases.

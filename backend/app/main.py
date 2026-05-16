@@ -4,11 +4,14 @@ import time
 from collections import defaultdict, deque
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image, UnidentifiedImageError
 
 from .ai_client import diagnose_with_ai
+from .case_id import generate_case_id
+from .knowledge_base import knowledge_titles
+from .metrics import metrics_store
 from .models import DiagnosticRequest, DiagnosticResponse, OperatingSystem
 from .settings import Settings, get_settings
 
@@ -35,6 +38,16 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/api/metrics")
+def metrics(
+    x_atlas_metrics_key: Annotated[str | None, Header(alias="X-Atlas-Metrics-Key")] = None,
+    settings: Settings = Depends(get_settings),
+) -> dict[str, dict[str, int]]:
+    if not settings.metrics_admin_key or x_atlas_metrics_key != settings.metrics_admin_key:
+        raise HTTPException(status_code=404, detail="Not found")
+    return metrics_store.snapshot()
+
+
 @app.post("/api/diagnose", response_model=DiagnosticResponse)
 async def diagnose(
     request: Request,
@@ -59,7 +72,56 @@ async def diagnose(
         locale=locale,
         image_provided=bool(image_bytes),
     )
-    return await diagnose_with_ai(diagnostic_request, settings, image_bytes, image_mime)
+    response = await diagnose_with_ai(diagnostic_request, settings, image_bytes, image_mime)
+    response = _prepare_handoff(response, diagnostic_request)
+    metrics_store.record_diagnosis(diagnostic_request, response)
+    return response
+
+
+@app.post("/api/events/whatsapp-click")
+def whatsapp_click() -> dict[str, str]:
+    metrics_store.record_event("whatsapp_click")
+    return {"status": "ok"}
+
+
+def _prepare_handoff(response: DiagnosticResponse, request: DiagnosticRequest) -> DiagnosticResponse:
+    case_id = generate_case_id()
+    matches = knowledge_titles(request)
+    response.case_id = case_id
+    response.knowledge_matches = matches
+    response.whatsapp_prefill = _structured_whatsapp(case_id, response, request)
+    return response
+
+
+def _structured_whatsapp(case_id: str, response: DiagnosticResponse, request: DiagnosticRequest) -> str:
+    locale = request.locale
+    os_label = request.linux_distribution if request.operating_system.value == "linux_other" and request.linux_distribution else request.operating_system.value
+    top_cause = response.likely_causes[0].title if response.likely_causes else "Unknown"
+    first_steps = "; ".join(step.title for step in response.safe_steps[:3])
+    issue = " ".join(request.issue_text.split())
+    if len(issue) > 220:
+        issue = f"{issue[:219]}…"
+    if locale == "en":
+        return (
+            f"Hello Atlas PC Support, I used Atlas Smart Diagnostics.\n"
+            f"Case: {case_id}\n"
+            f"OS: {os_label}\n"
+            f"Difficulty: {response.difficulty.value}\n"
+            f"Self-service probability: {response.self_service_probability.value}\n"
+            f"Likely cause: {top_cause}\n"
+            f"Suggested safe steps: {first_steps}\n"
+            f"Problem: {issue}"
+        )
+    return (
+        f"Hola Atlas PC Support, usé Atlas Smart Diagnostics.\n"
+        f"Caso: {case_id}\n"
+        f"Sistema: {os_label}\n"
+        f"Dificultad: {response.difficulty.value}\n"
+        f"Probabilidad autoservicio: {response.self_service_probability.value}\n"
+        f"Causa probable: {top_cause}\n"
+        f"Pasos seguros sugeridos: {first_steps}\n"
+        f"Problema: {issue}"
+    )
 
 
 def _rate_limit(request: Request, settings: Settings) -> None:
