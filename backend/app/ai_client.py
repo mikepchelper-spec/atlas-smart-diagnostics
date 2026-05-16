@@ -8,6 +8,7 @@ import httpx
 from pydantic import ValidationError
 
 from .diagnostic_rules import build_rule_based_diagnostic
+from .knowledge_base import knowledge_prompt
 from .models import DiagnosticRequest, DiagnosticResponse
 from .settings import Settings
 
@@ -56,7 +57,7 @@ async def _chat_completion(
     user_content: list[dict[str, Any]] = [
         {
             "type": "text",
-            "text": _user_prompt(request),
+            "text": _user_prompt(request, knowledge_prompt(request)),
         }
     ]
     if image_bytes and image_mime:
@@ -105,12 +106,14 @@ def _model(settings: Settings) -> str:
     return "gpt-4o-mini"
 
 
-def _user_prompt(request: DiagnosticRequest) -> str:
+def _user_prompt(request: DiagnosticRequest, runbook_context: str) -> str:
     return f"""
 Locale: {request.locale}
 Operating system: {request.operating_system.value}
 Linux distribution: {request.linux_distribution or ""}
 Image provided: {request.image_provided}
+
+{runbook_context}
 
 User error/problem text:
 {request.issue_text}
