@@ -54,6 +54,40 @@
   font-size: clamp(1rem, 2vw, 1.2rem);
 }
 
+.language-toggle {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+  font-weight: 800;
+}
+
+.language-toggle span {
+  padding: 0 8px;
+  color: #cbd5e1;
+  font-size: 0.86rem;
+}
+
+.language-toggle button {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: transparent;
+  color: #f8fafc;
+  font: inherit;
+  cursor: pointer;
+}
+
+.language-toggle button.active {
+  background: var(--accent);
+  color: white;
+}
+
 .trust-panel {
   display: grid;
   gap: 10px;
@@ -201,6 +235,24 @@ small {
   gap: 18px;
   justify-content: space-between;
   align-items: flex-start;
+}
+
+.case-id {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  margin: 12px 0 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: var(--surface-soft);
+  color: var(--text);
+  font-weight: 800;
+}
+
+.case-id strong {
+  color: var(--text-strong);
+  letter-spacing: 0.04em;
 }
 
 .risk-badge {

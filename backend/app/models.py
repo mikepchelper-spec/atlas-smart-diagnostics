@@ -62,6 +62,7 @@ class DiagnosticRequest(BaseModel):
 
 
 class DiagnosticResponse(BaseModel):
+    case_id: str = Field(pattern=r"^ATLAS-CASE-[A-Z0-9]{6}$")
     summary: str = Field(min_length=10, max_length=600)
     likely_causes: list[Cause] = Field(min_length=1, max_length=5)
     difficulty: Difficulty
@@ -74,3 +75,4 @@ class DiagnosticResponse(BaseModel):
     whatsapp_prefill: str = Field(min_length=20, max_length=1200)
     disclaimer: str = Field(min_length=20, max_length=1200)
     model_provider: str = Field(min_length=2, max_length=80)
+    knowledge_matches: list[str] = Field(default_factory=list, max_length=5)
