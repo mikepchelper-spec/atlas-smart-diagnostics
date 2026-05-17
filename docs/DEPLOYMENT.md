@@ -1,42 +1,111 @@
-# Deployment guide
+# Deployment Guide
 
-## Recommended production layout
+## Production topology (current)
 
 ```text
-diagnostico.atlaspcsupport.com        -> static frontend
-diagnostico-api.atlaspcsupport.com    -> FastAPI backend
-atlaspcsupport.com/autoservicio       -> WordPress page embedding frontend iframe
+diagnostico.atlaspcsupport.com
+  ├─ /            -> React frontend (atlasdiag-web)
+  ├─ /api/*       -> FastAPI backend (atlasdiag-api)
+  └─ /health      -> FastAPI health endpoint
 ```
 
-## Backend on Oracle + Nginx Proxy Manager
+This setup intentionally uses a single public domain to simplify CORS and avoid cross-subdomain issues.
 
-1. Clone repo on Oracle.
-2. Create `backend/.env` from `.env.example`.
-3. Set real variables:
-   - `AI_PROVIDER`
-   - `AI_API_KEY`
-   - `AI_MODEL`
-   - `ALLOWED_ORIGINS=https://atlaspcsupport.com,https://diagnostico.atlaspcsupport.com`
-   - `ATLAS_WHATSAPP_NUMBER`
-4. Run with Docker or systemd/uvicorn.
-5. Add NPM Proxy Host for `diagnostico-api.atlaspcsupport.com`.
-6. Enable HTTPS, Force SSL, HTTP/2.
+## Prerequisites
 
-## Frontend static hosting
+- Oracle VM with Docker and Docker Compose installed.
+- Nginx Proxy Manager (NPM) running on the same Docker network used by app containers.
+- DNS A record:
+  - `diagnostico.atlaspcsupport.com -> 129.146.121.2`
+- External Docker network available (expected name: `web_traffic`).
+
+Create network once if needed:
 
 ```bash
-cd frontend
-npm ci
-VITE_API_BASE_URL=https://diagnostico-api.atlaspcsupport.com \
-VITE_ATLAS_WHATSAPP_NUMBER=51999999999 \
-npm run build
+docker network create web_traffic
 ```
 
-Upload `frontend/dist/` to your static host or serve it with NPM.
+## 1) Clone and configure
 
-## WordPress Elementor embed
+```bash
+cd /home/ubuntu/servicios
+git clone https://github.com/mikepchelper-spec/atlas-smart-diagnostics.git
+cd atlas-smart-diagnostics
+```
 
-Use an HTML widget:
+Create backend env:
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+Set at least:
+
+- `AI_PROVIDER`
+- `AI_API_KEY`
+- `AI_MODEL`
+- `ALLOWED_ORIGINS=https://diagnostico.atlaspcsupport.com,https://atlaspcsupport.com`
+- `ATLAS_WHATSAPP_NUMBER=<number_without_plus>`
+
+Optional root `.env` (for frontend build args):
+
+```bash
+cat > .env <<'EOF'
+VITE_API_BASE_URL=https://diagnostico.atlaspcsupport.com
+VITE_ATLAS_WHATSAPP_NUMBER=51999999999
+EOF
+```
+
+## 2) Build and run
+
+```bash
+docker-compose -f docker-compose.prod.yml up -d --build
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+```
+
+Expected containers:
+
+- `atlasdiag-web`
+- `atlasdiag-api`
+
+## 3) Configure Nginx Proxy Manager
+
+Create or edit proxy host:
+
+- **Domain Names**: `diagnostico.atlaspcsupport.com`
+- **Scheme**: `http`
+- **Forward Hostname/IP**: `atlasdiag-web`
+- **Forward Port**: `80`
+- **Block Common Exploits**: ON
+- **Websockets Support**: ON
+
+SSL tab:
+
+- Request or select Let's Encrypt certificate.
+- Enable `Force SSL`.
+- Enable `HTTP/2`.
+
+Important: no custom redirect from `/` should be present for this host.
+
+## 4) Validation checks
+
+```bash
+curl -I https://diagnostico.atlaspcsupport.com
+curl -s https://diagnostico.atlaspcsupport.com/health
+curl -s -X POST https://diagnostico.atlaspcsupport.com/api/diagnose \
+  -F "os=windows-11" \
+  -F "error_text=Blue screen after update"
+```
+
+Expected:
+
+- Homepage responds `200`.
+- `/health` returns JSON with `status: ok`.
+- `/api/diagnose` returns structured diagnosis JSON.
+
+## WordPress embed snippet
+
+Use in Elementor HTML widget on `atlaspcsupport.com`:
 
 ```html
 <iframe
@@ -47,13 +116,42 @@ Use an HTML widget:
 ></iframe>
 ```
 
+## Troubleshooting
+
+### `DNS_PROBE_FINISHED_NXDOMAIN`
+
+- DNS record missing or not propagated.
+- Verify A record for `diagnostico` points to VM public IP.
+
+### Cloudflare `525 SSL handshake failed`
+
+- NPM cert missing/invalid.
+- Re-issue certificate in NPM and ensure proxy host points to live container.
+
+### `502 Bad Gateway` in NPM
+
+- Target container not running, or wrong target host/port.
+- Check:
+  - `docker ps`
+  - NPM target should be `atlasdiag-web:80`.
+
+### Frontend loads, but API fails
+
+- Verify `atlasdiag-api` is running.
+- Check reverse proxy rules in `frontend/Dockerfile.prod`.
+- Check backend logs:
+  - `docker logs atlasdiag-api --tail 200`
+
+### CORS errors in browser console
+
+- Add real origin(s) to `ALLOWED_ORIGINS` in `backend/.env`.
+- Restart services after changing env.
+
 ## Launch checklist
 
-- Backend `/health` returns `ok`.
-- CORS allows only expected domains.
-- Upload limit works.
-- Rate limit works.
-- WhatsApp number is correct.
-- Real AI provider tested with one Windows and one data-risk case.
-- WordPress page has disclaimer and privacy link.
-- Cloudflare WAF/rate limit added if public traffic grows.
+- `atlaspcsupport.com` remains unaffected.
+- `diagnostico` homepage works over HTTPS.
+- `/health` and `/api/diagnose` pass.
+- Real provider key loaded server-side only.
+- Rate limit and upload limits tested.
+- Privacy disclaimer and handoff message verified.

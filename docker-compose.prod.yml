@@ -1,0 +1,27 @@
+services:
+  atlasdiag-api:
+    build: ./backend
+    container_name: atlasdiag-api
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    networks:
+      - web_traffic
+
+  atlasdiag-web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://diagnostico.atlaspcsupport.com}
+        VITE_ATLAS_WHATSAPP_NUMBER: ${VITE_ATLAS_WHATSAPP_NUMBER:-51999999999}
+    container_name: atlasdiag-web
+    restart: unless-stopped
+    depends_on:
+      - atlasdiag-api
+    networks:
+      - web_traffic
+
+networks:
+  web_traffic:
+    external: true
