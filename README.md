@@ -97,7 +97,7 @@ Frontend:
 
 | Variable | Notes |
 |---|---|
-| `VITE_API_BASE_URL` | Backend URL, e.g. `https://diagnostico-api.atlaspcsupport.com`. |
+| `VITE_API_BASE_URL` | Backend base URL, e.g. `https://diagnostico.atlaspcsupport.com`. |
 | `VITE_ATLAS_WHATSAPP_NUMBER` | WhatsApp number in international format without `+`. |
 
 ## WordPress embed options
@@ -139,6 +139,37 @@ The assistant must not present risky actions as casual steps. It should escalate
 - Configure CORS to only allow your web origins.
 - Start with `AI_PROVIDER=mock` for smoke tests, then enable a real provider.
 - Add Cloudflare/WAF rate limits before public launch if traffic grows.
+
+## Production (Oracle + NPM)
+
+Current production setup uses one public domain:
+
+- `https://diagnostico.atlaspcsupport.com` serves the React frontend.
+- `https://diagnostico.atlaspcsupport.com/api` proxies to FastAPI.
+- `https://diagnostico.atlaspcsupport.com/health` proxies to FastAPI health.
+
+Production files included in this repo:
+
+- `docker-compose.prod.yml`
+- `frontend/Dockerfile.prod`
+
+Quick start on Oracle VM:
+
+```bash
+cd /home/ubuntu/servicios/atlas-smart-diagnostics
+cp backend/.env.example backend/.env
+# edit backend/.env with real provider key + allowed origins
+docker-compose -f docker-compose.prod.yml up -d --build
+```
+
+Nginx Proxy Manager target:
+
+- Domain: `diagnostico.atlaspcsupport.com`
+- Forward host: `atlasdiag-web`
+- Forward port: `80`
+- SSL: Let's Encrypt cert + Force SSL
+
+For full production steps and troubleshooting, see `docs/DEPLOYMENT.md` and `docs/OPERATIONS.md`.
 
 ## Validation
 
